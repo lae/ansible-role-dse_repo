@@ -63,9 +63,7 @@ script:
   - ansible-playbook tests/test.yml -i tests/inventory
 
   # Perform a another test run with the playbook to check for idempotency
-  - >
-    unbuffer ansible-playbook tests/test.yml -i tests/inventory
-    | tee /tmp/idempotency.log
+  - 'unbuffer ansible-playbook tests/test.yml -i tests/inventory >/tmp/idempotency.log 2>&1'
   - >
     tail /tmp/idempotency.log | grep -qP 'changed=0.*failed=0'
     && (echo "Idempotence: PASS"; exit 0)
