@@ -1,0 +1,7 @@
+---
+# defaults file for ansible-role-dse_repo
+dse_repo_is_mirror: false
+# dse_repo_mirror_key_id: B999A372
+# dse_repo_mirror_uri: "http://packages.local/aptly/dse"
+# dse_repo_user: john.doe
+# dse_repo_password: hunter2

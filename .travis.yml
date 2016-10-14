@@ -1,0 +1,75 @@
+---
+language: python
+python: "2.7"
+sudo: required
+dist: trusty
+
+addons:
+  apt:
+    sources:
+    - sourceline: 'ppa:ubuntu-lxc/stable'
+    packages:
+    - python-pip
+    - lxc
+    - lxc-templates
+    - yum
+    - expect-dev
+
+cache:
+  directories:
+    - $HOME/lxc/
+  pip: true
+
+before_cache:
+  - mkdir $HOME/lxc
+  - sudo tar cf $HOME/lxc/cache.tar /var/cache/lxc/
+  - sudo chown $USER. $HOME/lxc/cache.tar
+
+env:
+  - LXC_NAME=test-deb8 LXC_DISTRO=debian LXC_RELEASE=jessie
+  - LXC_NAME=test-deb7 LXC_DISTRO=debian LXC_RELEASE=wheezy
+  - LXC_NAME=test-ubuntu14lts LXC_DISTRO=ubuntu LXC_RELEASE=trusty
+  - LXC_NAME=test-ubuntu16lts LXC_DISTRO=ubuntu LXC_RELEASE=xenial
+
+install:
+  # Install ansible
+  - pip install ansible
+
+  # Check ansible version
+  - ansible --version
+
+  # Create ansible.cfg with correct roles_path
+  - printf '[defaults]\nroles_path=../\nhost_key_checking=False' >ansible.cfg
+
+  # Extract LXC image cache
+  - sudo tar xf $HOME/lxc/cache.tar -C / || echo "Didn't extract cache."
+
+  # Create and configure LXC container to test against
+  - export LXC_ROOTFS=/var/lib/lxc/$LXC_NAME/rootfs
+  - '[ "x${LXC_DISTRO}" == "xdebian" ] && sudo LANG= LC_ALL= LC_CTYPE= lxc-create -n $LXC_NAME -t debian -- -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/debian --packages python || true'
+  - '[ "x${LXC_DISTRO}" == "xcentos" ] && sudo root_expire_password=no lxc-create -n $LXC_NAME -t centos -- -R $LXC_RELEASE || true'
+  - '[ "x${LXC_DISTRO}" == "xubuntu" ] && sudo lxc-create -n $LXC_NAME -t ubuntu -- -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/ubuntu --packages python || true'
+  - 'sudo lxc-start -n $LXC_NAME && until (sudo lxc-info -n $LXC_NAME | grep -q ^IP:); do printf . && sleep 1; done && sleep 2'
+  - sudo /bin/bash -c "printf '\n$(sudo lxc-info -Hin $LXC_NAME) test.lxc' >> /etc/hosts"
+  - ssh-keygen -f ~/.ssh/id_rsa -t rsa -N ''
+  - sudo mkdir -vm 0700 $LXC_ROOTFS/root/.ssh/
+  - sudo cp -v ~/.ssh/id_rsa.pub $LXC_ROOTFS/root/.ssh/authorized_keys
+
+script:
+  # Basic role syntax check
+  - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
+
+  # Perform a test run with the playbook
+  - ansible-playbook tests/test.yml -i tests/inventory
+
+  # Perform a another test run with the playbook to check for idempotency
+  - >
+    unbuffer ansible-playbook tests/test.yml -i tests/inventory
+    | tee /tmp/idempotency.log
+  - >
+    tail /tmp/idempotency.log | grep -qP 'changed=0.*failed=0'
+    && (echo "Idempotence: PASS"; exit 0)
+    || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)
+
+notifications:
+  webhooks: https://galaxy.ansible.com/api/v1/notifications/

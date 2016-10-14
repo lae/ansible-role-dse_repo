@@ -1,0 +1,40 @@
+---
+# tasks file for ansible-role-dse_repo
+- block:
+  - name: Trust Datastax' Debian packaging key
+    apt_key:
+      data: "{{ lookup('file', 'files/datastax_key.asc') }}"
+      id: B999A372
+      state: present
+    when: not dse_repo_is_mirror
+
+  - name: Trust mirror's packaging key (Aptly)
+    apt_key:
+      data: "{{ lookup('file', 'files/datastax_mirror_key.asc') }}"
+      id: "{{ dse_repo_mirror_key_id }}"
+      state: present
+    when: dse_repo_is_mirror
+
+  - name: Set internal variable dse_repo_uri to the official repo
+    set_fact:
+      __dse_repo_uri: "https://{{ dse_repo_user }}:{{ dse_repo_password }}@debian.datastax.com/enterprise"
+    when: not dse_repo_is_mirror
+
+  - name: Set internal variable dse_repo_uri to a mirror
+    set_fact:
+      __dse_repo_uri: "{{ dse_repo_mirror_uri }}"
+    when: dse_repo_is_mirror
+
+  - name: Install apt-transport-https
+    apt:
+      name: apt-transport-https
+      state: present
+    when: "__dse_repo_uri.startswith('https')"
+
+  - name: Configure DSE's Debian repository or mirror
+    apt_repository:
+      repo: "deb {{ __dse_repo_uri }} stable main"
+      filename: dse
+      state: present
+
+  when: ansible_pkg_mgr == "apt"

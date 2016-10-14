@@ -1,0 +1,9 @@
+---
+- hosts: test.lxc
+  remote_user: root
+  become: True
+  roles:
+    - ansible-role-dse_repo
+  vars:
+    dse_repo_user: john.doe
+    dse_repo_password: hunter2
