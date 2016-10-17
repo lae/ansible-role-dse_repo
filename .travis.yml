@@ -1,73 +1,60 @@
----
 language: python
-python: "2.7"
+python: '2.7'
 sudo: required
 dist: trusty
-
 addons:
   apt:
     sources:
-    - sourceline: 'ppa:ubuntu-lxc/stable'
+    - sourceline: ppa:ubuntu-lxc/stable
     packages:
     - python-pip
     - lxc
     - lxc-templates
     - yum
     - expect-dev
-
 cache:
   directories:
-    - $HOME/lxc/
+  - "$HOME/lxc/"
   pip: true
-
 before_cache:
-  - mkdir $HOME/lxc
-  - sudo tar cf $HOME/lxc/cache.tar /var/cache/lxc/
-  - sudo chown $USER. $HOME/lxc/cache.tar
-
+- mkdir $HOME/lxc
+- sudo tar cf $HOME/lxc/cache.tar /var/cache/lxc/
+- sudo chown $USER. $HOME/lxc/cache.tar
 env:
-  - LXC_NAME=test-deb8 LXC_DISTRO=debian LXC_RELEASE=jessie
-  - LXC_NAME=test-deb7 LXC_DISTRO=debian LXC_RELEASE=wheezy
-  - LXC_NAME=test-ubuntu14lts LXC_DISTRO=ubuntu LXC_RELEASE=trusty
-  - LXC_NAME=test-ubuntu16lts LXC_DISTRO=ubuntu LXC_RELEASE=xenial
-
+- LXC_NAME=test-deb8 LXC_DISTRO=debian LXC_RELEASE=jessie
+- LXC_NAME=test-deb7 LXC_DISTRO=debian LXC_RELEASE=wheezy
+- LXC_NAME=test-ubuntu14lts LXC_DISTRO=ubuntu LXC_RELEASE=trusty
+- LXC_NAME=test-ubuntu16lts LXC_DISTRO=ubuntu LXC_RELEASE=xenial
 install:
-  # Install ansible
-  - pip install ansible
-
-  # Check ansible version
-  - ansible --version
-
-  # Create ansible.cfg with correct roles_path
-  - printf '[defaults]\nroles_path=../\nhost_key_checking=False' >ansible.cfg
-
-  # Extract LXC image cache
-  - sudo tar xf $HOME/lxc/cache.tar -C / || echo "Didn't extract cache."
-
-  # Create and configure LXC container to test against
-  - export LXC_ROOTFS=/var/lib/lxc/$LXC_NAME/rootfs
-  - '[ "x${LXC_DISTRO}" == "xdebian" ] && sudo LANG= LC_ALL= LC_CTYPE= lxc-create -n $LXC_NAME -t debian -- -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/debian --packages python || true'
-  - '[ "x${LXC_DISTRO}" == "xcentos" ] && sudo root_expire_password=no lxc-create -n $LXC_NAME -t centos -- -R $LXC_RELEASE || true'
-  - '[ "x${LXC_DISTRO}" == "xubuntu" ] && sudo lxc-create -n $LXC_NAME -t ubuntu -- -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/ubuntu --packages python || true'
-  - 'sudo lxc-start -n $LXC_NAME && until (sudo lxc-info -n $LXC_NAME | grep -q ^IP:); do printf . && sleep 1; done && sleep 2'
-  - sudo /bin/bash -c "printf '\n$(sudo lxc-info -Hin $LXC_NAME) test.lxc' >> /etc/hosts"
-  - ssh-keygen -f ~/.ssh/id_rsa -t rsa -N ''
-  - sudo mkdir -vm 0700 $LXC_ROOTFS/root/.ssh/
-  - sudo cp -v ~/.ssh/id_rsa.pub $LXC_ROOTFS/root/.ssh/authorized_keys
-
+- pip install ansible
+- ansible --version
+- printf '[defaults]\nroles_path=../\nhost_key_checking=False' >ansible.cfg
+- sudo tar xf $HOME/lxc/cache.tar -C / || echo "Didn't extract cache."
+- export LXC_ROOTFS=/var/lib/lxc/$LXC_NAME/rootfs
+- '[ "x${LXC_DISTRO}" == "xdebian" ] && sudo LANG= LC_ALL= LC_CTYPE= lxc-create -n
+  $LXC_NAME -t debian -- -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/debian
+  --packages python || true'
+- '[ "x${LXC_DISTRO}" == "xcentos" ] && sudo root_expire_password=no lxc-create -n
+  $LXC_NAME -t centos -- -R $LXC_RELEASE || true'
+- '[ "x${LXC_DISTRO}" == "xubuntu" ] && sudo lxc-create -n $LXC_NAME -t ubuntu --
+  -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/ubuntu --packages python ||
+  true'
+- sudo lxc-start -n $LXC_NAME && until (sudo lxc-info -n $LXC_NAME | grep -q ^IP:);
+  do printf . && sleep 1; done && sleep 2
+- sudo /bin/bash -c "printf '\n$(sudo lxc-info -Hin $LXC_NAME) test.lxc' >> /etc/hosts"
+- ssh-keygen -f ~/.ssh/id_rsa -t rsa -N ''
+- sudo mkdir -vm 0700 $LXC_ROOTFS/root/.ssh/
+- sudo cp -v ~/.ssh/id_rsa.pub $LXC_ROOTFS/root/.ssh/authorized_keys
 script:
-  # Basic role syntax check
-  - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
+- ansible-playbook tests/test.yml -i tests/inventory --syntax-check
+- ansible-playbook tests/test.yml -i tests/inventory
+- unbuffer ansible-playbook tests/test.yml -i tests/inventory >/tmp/idempotency.log
+  2>&1
+- 'tail /tmp/idempotency.log | grep -qP ''changed=0.*failed=0'' && (echo "Idempotence:
+  PASS"; exit 0) || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)
 
-  # Perform a test run with the playbook
-  - ansible-playbook tests/test.yml -i tests/inventory
-
-  # Perform a another test run with the playbook to check for idempotency
-  - 'unbuffer ansible-playbook tests/test.yml -i tests/inventory >/tmp/idempotency.log 2>&1'
-  - >
-    tail /tmp/idempotency.log | grep -qP 'changed=0.*failed=0'
-    && (echo "Idempotence: PASS"; exit 0)
-    || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)
-
+'
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/
+  slack:
+    secure: KoZ7wRz++oy5UAxV7ux1PjewoskNTP3J4WxpsaDBMFImUaBVXASJI1yf5hiPxbIoqs1gzD8GtbDGm6BIB+iRUuVo1xYp2+5Q0YUozxlwSaZit8uXOfGkEgn48sZFVTGlYCIv8oYtsl+wIeZB1thIhAUxsZYTuh1m73C7GqcFqBTw0EdDBfTTUfF2Hqx+7G59vxyoF9B09Xzu5hierxhjFZ87MuiBwBdp5Du6X2DGbhwMydzzriVSyqxo3SoCNd4PYgewG+5JqkJuWuT8SPAsbGOJJFoz7qtaVKsoBN7Sppl0bWHqe2wlN9mvKfH7b2zdWqH+8zFIJpPAq2fFm5SDjAY8CD2lJg408p3sLjyBtZBZlbJSfF/NKp7QQ1d21u/JzjxDcaHCq7c9hoIQS27J1QvM2pjfceAk3Tu4gg4F1MHcpOaa9szwf/9mXeyN+lo9kZ9q5BIiG9p21DR3CJZ9FkR5jMnfC34ohPx8GY6vLIXB3MVB1tzvZrRXnpuoFJArlS5ZqCZRUDGEGXAUJLd3MRh0k76SznzYnSVqIKQbjCAIs2yw3vJPkpMzBkAnsLwyyYcAYJcr23YeomKGMvC3RvNozfQi08lU5P+IlTNN3Oklo3DVu4AfczMelO1gC2MhoNfi92EdStlmSzdqU8dklCXBglpzpns6AeldDoXy16g=
