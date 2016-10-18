@@ -21,14 +21,18 @@ before_cache:
 - sudo tar cf $HOME/lxc/cache.tar /var/cache/lxc/
 - sudo chown $USER. $HOME/lxc/cache.tar
 env:
-- LXC_NAME=test-deb8 LXC_DISTRO=debian LXC_RELEASE=jessie
-- LXC_NAME=test-deb7 LXC_DISTRO=debian LXC_RELEASE=wheezy
-- LXC_NAME=test-ubuntu14lts LXC_DISTRO=ubuntu LXC_RELEASE=trusty
-- LXC_NAME=test-ubuntu16lts LXC_DISTRO=ubuntu LXC_RELEASE=xenial
+  matrix:
+  - LXC_NAME=test-debian8 LXC_DISTRO=debian LXC_RELEASE=jessie
+  - LXC_NAME=test-debian7 LXC_DISTRO=debian LXC_RELEASE=wheezy
+  - LXC_NAME=test-ubuntu14lts LXC_DISTRO=ubuntu LXC_RELEASE=trusty
+  - LXC_NAME=test-ubuntu16lts LXC_DISTRO=ubuntu LXC_RELEASE=xenial
+  global:
+    secure: T5p6pyD17rpuWq+mwegJDwf12QQsb+ckIlHeCf5mMUk57LBkgUzWN9tcE3/1K70UW7ElQ4zxfASLTIjAUqH023ZiNFUuXqs4QCUeTP8YNBa8xbMeM8MsGRAs4tJWd6TZx/0G7vAJ0uOV/3MFVCsJVtv1aRMpmg4ygavSqQhdiBwdU2NvlfSHNWJ+5t+5Mjpa6T9Mcex6yn1kdomq7ewnl25KERm/Q64/TESdTAG0BdZbX5kCU0PrxGhnMLW4Dzi/EfjclN8HN7ZtldSzJAgSf2x7lFuYMFe7Sloh8i4Ll5MNmUpfPChQUKoQrc3zDbOsfplLFq3arJZZZeeOmRoHJHOL8iuH0JD3+9dcc9m1/DrD6BobVJ8eimcNyEApUqJmqw1B1346VXuB/rIDh9bkikW01bTKFW9dR6skV+Bfl5514QFNKvQxrI5itlO3y8AjbCDsds9e7k2hhmKpaCvjjnkgXHSJfV5nOBpxjuJbk13tpWcLnSxR7P/jF2khYpEG85BomWRjjtpUV+C9WpXrQL/nwv+RIlCfD4d6lyMUhnh1A8wmIJklUtvIUtkeEkM45z9lNDXvcpl1aRqtvn5uX0oFKwkQbZt1w0w8X4yPOE6bnVsr/vvcU3BsC/DpkHlbJQ0LHvjAhkILTOEyLzRpVdHEulOUL5cOPUNUTzUjQ28=
 install:
 - pip install ansible
 - ansible --version
-- printf '[defaults]\nroles_path=../\nhost_key_checking=False' >ansible.cfg
+- printf "$VAULT_PASS" > .vault_password
+- printf '[defaults]\nroles_path=../\nhost_key_checking=False\nvault_password_file=.vault_password' >ansible.cfg
 - sudo tar xf $HOME/lxc/cache.tar -C / || echo "Didn't extract cache."
 - export LXC_ROOTFS=/var/lib/lxc/$LXC_NAME/rootfs
 - '[ "x${LXC_DISTRO}" == "xdebian" ] && sudo LANG= LC_ALL= LC_CTYPE= lxc-create -n

@@ -35,7 +35,6 @@
     apt_repository:
       repo: "deb {{ __dse_repo_uri }} stable main"
       filename: dse
-      update_cache: no
       state: present
 
   when: ansible_pkg_mgr == "apt"
