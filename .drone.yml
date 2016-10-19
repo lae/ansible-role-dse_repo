@@ -1,0 +1,16 @@
+---
+build:
+  image: python2.7
+  commands:
+  - sudo apt-add-repository -y ppa:ansible/ansible
+  - sudo apt-get -y update
+  - sudo apt-get -y install python-pip ansible curl ca-certificates
+  - ansible --version
+  - printf "$VAULT_PASS" > .vault_password
+  - printf '[defaults]\nroles_path=../\nhost_key_checking=False\nvault_password_file=.vault_password' >ansible.cfg
+script:
+  - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
+  - ansible-playbook tests/test.yml -i tests/inventory
+  - unbuffer ansible-playbook tests/test.yml -i tests/inventory >/tmp/idempotency.log 2>&1
+  - 'tail /tmp/idempotency.log | grep -qP ''changed=0.*failed=0'' && (echo "Idempotence: PASS"; exit 0) || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)'
+
