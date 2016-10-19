@@ -5,3 +5,4 @@ dse_repo_is_mirror: false
 # dse_repo_mirror_uri: "http://packages.local/aptly/dse"
 # dse_repo_user: john.doe
 # dse_repo_password: hunter2
+dse_repo_rpm_key_path: /etc/rpm/datastax_rpm_key.asc
