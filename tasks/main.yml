@@ -31,6 +31,14 @@
       state: present
     when: "__dse_repo_uri.startswith('https')"
 
+  - name: Install curl
+    apt:
+      name: curl
+      state: present
+    when:
+      - "'{{ dse_repo_user }}:{{ dse_repo_password }}' in __dse_repo_uri"
+      - "dse_repo_user is not empty"
+
   - name: Configure DSE's Debian repository or mirror
     apt_repository:
       repo: "deb {{ __dse_repo_uri }} stable main"
