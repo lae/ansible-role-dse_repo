@@ -4,3 +4,8 @@
   become: True
   roles:
     - ansible-role-dse_repo
+  tasks:
+    - name: Test that a package from DSE repo can be installed
+      package:
+        name: dse-libcassandra
+        state: installed
