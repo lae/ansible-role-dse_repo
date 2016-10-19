@@ -1,6 +1,6 @@
 ---
 build:
-  image: python2.7
+  image: python:2.7
   commands:
   - sudo apt-add-repository -y ppa:ansible/ansible
   - sudo apt-get -y update
