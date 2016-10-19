@@ -1,28 +1,30 @@
 ---
 # tasks file for ansible-role-dse_repo
 - block:
-  - name: Trust Datastax' Debian packaging key
-    apt_key:
-      data: "{{ lookup('file', 'files/datastax_apt_key.asc') }}"
-      id: B999A372
-      state: present
+  - block:
+    - name: Trust Datastax' Debian packaging key
+      apt_key:
+        data: "{{ lookup('file', 'files/datastax_apt_key.asc') }}"
+        id: B999A372
+        state: present
+
+    - name: Set internal variable dse_repo_uri to the official repo
+      set_fact:
+        __dse_repo_uri: "https://{{ dse_repo_user }}:{{ dse_repo_password }}@debian.datastax.com/enterprise"
+
     when: not dse_repo_is_mirror
 
-  - name: Trust mirror's packaging key (Aptly)
-    apt_key:
-      data: "{{ lookup('file', 'files/datastax_mirror_key.asc') }}"
-      id: "{{ dse_repo_mirror_key_id }}"
-      state: present
-    when: dse_repo_is_mirror
+  - block:
+    - name: Trust mirror's packaging key (e.g. aptly)
+      apt_key:
+        data: "{{ lookup('file', 'files/datastax_apt_mirror_key.asc') }}"
+        id: "{{ dse_repo_mirror_key_id }}"
+        state: present
 
-  - name: Set internal variable dse_repo_uri to the official repo
-    set_fact:
-      __dse_repo_uri: "https://{{ dse_repo_user }}:{{ dse_repo_password }}@debian.datastax.com/enterprise"
-    when: not dse_repo_is_mirror
+    - name: Set internal variable dse_repo_uri to a mirror
+      set_fact:
+        __dse_repo_uri: "{{ dse_repo_mirror_uri }}"
 
-  - name: Set internal variable dse_repo_uri to a mirror
-    set_fact:
-      __dse_repo_uri: "{{ dse_repo_mirror_uri }}"
     when: dse_repo_is_mirror
 
   - name: Install apt-transport-https
@@ -40,47 +42,43 @@
   when: ansible_pkg_mgr == "apt"
 
 - block:
-  - name: Upload packaging key for Datastax repository
-    copy:
-      src: datastax_rpm_key.asc
-      dest: "{{ dse_repo_rpm_key_path }}"
-      mode: 0644
+  - block:
+    - name: Upload packaging key for Datastax repository
+      copy:
+        src: datastax_rpm_key.asc
+        dest: "{{ dse_repo_rpm_key_path }}"
+        mode: 0644
 
-  - name: Trust packaging key for Datastax repository
-    rpm_key:
-      key: "{{ dse_repo_rpm_key_path }}"
-      state: present
+    - name: Trust packaging key for Datastax repository
+      rpm_key:
+        key: "{{ dse_repo_rpm_key_path }}"
+        state: present
+
+    - name: Set internal variable dse_repo_uri to the official repo
+      set_fact:
+        __dse_repo_uri: "https://{{ dse_repo_user }}:{{ dse_repo_password }}@rpm.datastax.com/enterprise"
+
+    when: not dse_repo_is_mirror
+
+  - block:
+    - name: Trust mirror's packaging key (e.g. createrepo)
+      rpm_key:
+        data: "{{ lookup('file', 'files/datastax_rpm_mirror_key.asc') }}"
+        state: present
+
+    - name: Set internal variable dse_repo_uri to a mirror
+      set_fact:
+        __dse_repo_uri: "{{ dse_repo_mirror_uri }}"
+
+    when: dse_repo_is_mirror
 
   - name: Configure DSE's RHEL repository
     yum_repository:
-      name: dse-noarch
-      file: dse
-      description: Official Datastax Enterprise repository (noarch)
-      baseurl: "https://rpm.datastax.com/enterprise/noarch/"
+      name: dse
+      description: Official Datastax Enterprise repository
+      baseurl: "{{ __dse_repo_uri }}"
       gpgkey: "file://{{ dse_repo_rpm_key_path }}"
       gpgcheck: yes
       enabled: yes
-
-  - name: Configure DSE's RHEL repository (64-bit)
-    yum_repository:
-      name: dse-x86_64
-      file: dse
-      description: Official Datastax Enterprise repository (x86_64)
-      baseurl: "https://rpm.datastax.com/enterprise/x86_64/"
-      gpgkey: "file://{{ dse_repo_rpm_key_path }}"
-      gpgcheck: yes
-      enabled: yes
-    when: ansible_architecture == "x86_64"
-
-  - name: Configure DSE's RHEL repository (32-bit)
-    yum_repository:
-      name: dse-i386
-      file: dse
-      description: Official Datastax Enterprise repository (i386)
-      baseurl: "https://rpm.datastax.com/enterprise/i386/"
-      gpgkey: "file://{{ dse_repo_rpm_key_path }}"
-      gpgcheck: yes
-      enabled: yes
-    when: ansible_architecture == "i386"
 
   when: ansible_pkg_mgr == "yum"
