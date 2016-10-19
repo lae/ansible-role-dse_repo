@@ -10,7 +10,15 @@ mirror (e.g. onsite mirror behind a firewall).
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+    # Set to true if using a mirror
+    dse_repo_is_mirror: false
+    # Abbreviated fingerprint of the public key used to sign packages on the mirror
+    dse_repo_mirror_key_id: B999A372
+    # Full URI to the mirror
+    dse_repo_mirror_uri: "http://packages.local/aptly/dse"
+    # Set the following to your DSE username/password to use official repos
+    dse_repo_user: john.doe
+    dse_repo_password: hunter2
 
 Example Playbook
 ----------------
@@ -32,10 +40,14 @@ Using a password-protected mirror of the official repository:
       vars:
         dse_repo_is_mirror: true
         dse_repo_mirror_key_id: FB72CC01
-        dse_repo_mirror_uri: "https://localuser:password123@packages.local/aptly/dse"
+        dse_repo_user: localuser
+        dse_repo_password: hunter2
+        dse_repo_mirror_uri: "https://{{ dse_repo_user }}:{{ dse_repo_password }}@packages.local/aptly/dse"
 
 ...and include the public key used to sign the packages in the mirror in
-`files/datastax_mirror_key.asc` in your playbook's directory.
+`files/datastax_apt_mirror_key.asc` (and `files/datastax_rpm_mirror_key.asc`
+for RHEL/CentOS) in your playbook's directory. (Note, you don't *need* to use
+the `dse_repo_user|password` variables there.)
 
 License
 -------
