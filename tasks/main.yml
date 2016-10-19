@@ -36,8 +36,9 @@
       name: curl
       state: present
     when:
-      - "'{{ dse_repo_user }}:{{ dse_repo_password }}' in __dse_repo_uri"
-      - "dse_repo_user is not empty"
+      - "'://{{ dse_repo_user }}:{{ dse_repo_password }}@' in __dse_repo_uri"
+      - dse_repo_user is defined
+      - dse_repo_password is defined
 
   - name: Configure DSE's Debian repository or mirror
     apt_repository:
