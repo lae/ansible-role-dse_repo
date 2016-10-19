@@ -58,10 +58,9 @@ script:
 - unbuffer ansible-playbook tests/test.yml -i tests/inventory >/tmp/idempotency.log
   2>&1
 - 'tail /tmp/idempotency.log | grep -qP ''changed=0.*failed=0'' && (echo "Idempotence:
-  PASS"; exit 0) || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)
+  PASS"; exit 0) || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)'
 - ansible -i tests/inventory all -m package -a "name=dse-libcassandra state=installed"
 
-'
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/
   slack:
