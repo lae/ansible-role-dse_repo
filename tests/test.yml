@@ -1,6 +1,6 @@
 ---
-- hosts: test.lxc
-  remote_user: root
+- hosts: localhost
+  connection: local
   become: True
   roles:
     - ansible-role-dse_repo
