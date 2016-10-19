@@ -1,6 +1,6 @@
 ---
 build:
-  image: python:2.7
+  image: williamyeh/ansible:debian8
   commands:
   - sudo apt-add-repository -y ppa:ansible/ansible
   - sudo apt-get -y update
