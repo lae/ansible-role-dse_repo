@@ -6,6 +6,8 @@ pipeline:
       - VAULT_PASS=$$VAULT_PASS
     commands:
     - ansible --version
+    - printf 'deb http://mirrors.us.kernel.org/ubuntu xenial main universe' >> /etc/apt/sources.list
+    - apt-get update
     - apt-get install -y expect-dev
     - printf "$VAULT_PASS" > .vault_password
     - printf '[defaults]\nroles_path=../\nhost_key_checking=False\nvault_password_file=.vault_password' >ansible.cfg
