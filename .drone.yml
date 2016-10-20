@@ -1,7 +1,7 @@
 ---
 pipeline:
   test:
-    image: williamyeh/ansible:debian8
+    image: williamyeh/ansible:ubuntu16.04
     environment:
       - VAULT_PASS=$$VAULT_PASS
     commands:
