@@ -1,18 +1,16 @@
 ---
 pipeline:
   test:
-    image: williamyeh/ansible:ubuntu16.04
+    image: williamyeh/ansible:debian8
     environment:
       - VAULT_PASS=$$VAULT_PASS
     commands:
     - ansible --version
-    - printf 'deb http://mirrors.us.kernel.org/ubuntu xenial main universe' >> /etc/apt/sources.list
-    - apt-get update
-    - apt-get install -y expect-dev
+    - export TERM=xterm
     - printf "$VAULT_PASS" > .vault_password
     - printf '[defaults]\nroles_path=../\nhost_key_checking=False\nvault_password_file=.vault_password' >ansible.cfg
     - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
-    - unbuffer ansible-playbook tests/test.yml -i tests/inventory
+    - ansible-playbook tests/test.yml -i tests/inventory
     - ansible-playbook tests/test.yml -i tests/inventory >/tmp/idempotency.log 2>&1
     - 'tail /tmp/idempotency.log | grep -qP ''changed=0.*failed=0'' && (echo "Idempotence: PASS"; exit 0) || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)'
 
