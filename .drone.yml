@@ -4,9 +4,9 @@ pipeline:
     image: williamyeh/ansible:debian8
     environment:
       - VAULT_PASS=$$VAULT_PASS
+      - TERM=xterm
     commands:
     - ansible --version
-    - export TERM=xterm
     - printf "$VAULT_PASS" > .vault_password
     - printf '[defaults]\nroles_path=../\nhost_key_checking=False\nvault_password_file=.vault_password' >ansible.cfg
     - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
