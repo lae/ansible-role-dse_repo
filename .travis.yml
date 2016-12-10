@@ -1,63 +1,32 @@
 language: python
-python: '2.7'
 sudo: required
 dist: trusty
-addons:
-  apt:
-    sources:
-    - sourceline: ppa:ubuntu-lxc/stable
-    packages:
-    - python-pip
-    - lxc
-    - lxc-templates
-    - yum
-    - expect-dev
 cache:
-  directories:
-  - "$HOME/lxc/"
+  directories: [ '$HOME/lxc' ]
   pip: true
-before_cache:
-- mkdir $HOME/lxc
-- sudo tar cf $HOME/lxc/cache.tar /var/cache/lxc/
-- sudo chown $USER. $HOME/lxc/cache.tar
 env:
   matrix:
-  - LXC_NAME=test-debian8 LXC_DISTRO=debian LXC_RELEASE=jessie
-  - LXC_NAME=test-debian7 LXC_DISTRO=debian LXC_RELEASE=wheezy
-  - LXC_NAME=test-ubuntu14lts LXC_DISTRO=ubuntu LXC_RELEASE=trusty
-  - LXC_NAME=test-ubuntu16lts LXC_DISTRO=ubuntu LXC_RELEASE=xenial
-  - LXC_NAME=test-centos6 LXC_DISTRO=centos LXC_RELEASE=6
-  - LXC_NAME=test-centos7 LXC_DISTRO=centos LXC_RELEASE=7
+  - LXC_DISTRO=debian LXC_RELEASE=jessie
+  - LXC_DISTRO=ubuntu LXC_RELEASE=xenial
+  - LXC_DISTRO=centos LXC_RELEASE=7
   global:
     secure: T5p6pyD17rpuWq+mwegJDwf12QQsb+ckIlHeCf5mMUk57LBkgUzWN9tcE3/1K70UW7ElQ4zxfASLTIjAUqH023ZiNFUuXqs4QCUeTP8YNBa8xbMeM8MsGRAs4tJWd6TZx/0G7vAJ0uOV/3MFVCsJVtv1aRMpmg4ygavSqQhdiBwdU2NvlfSHNWJ+5t+5Mjpa6T9Mcex6yn1kdomq7ewnl25KERm/Q64/TESdTAG0BdZbX5kCU0PrxGhnMLW4Dzi/EfjclN8HN7ZtldSzJAgSf2x7lFuYMFe7Sloh8i4Ll5MNmUpfPChQUKoQrc3zDbOsfplLFq3arJZZZeeOmRoHJHOL8iuH0JD3+9dcc9m1/DrD6BobVJ8eimcNyEApUqJmqw1B1346VXuB/rIDh9bkikW01bTKFW9dR6skV+Bfl5514QFNKvQxrI5itlO3y8AjbCDsds9e7k2hhmKpaCvjjnkgXHSJfV5nOBpxjuJbk13tpWcLnSxR7P/jF2khYpEG85BomWRjjtpUV+C9WpXrQL/nwv+RIlCfD4d6lyMUhnh1A8wmIJklUtvIUtkeEkM45z9lNDXvcpl1aRqtvn5uX0oFKwkQbZt1w0w8X4yPOE6bnVsr/vvcU3BsC/DpkHlbJQ0LHvjAhkILTOEyLzRpVdHEulOUL5cOPUNUTzUjQ28=
+before_cache:
+- sudo mkdir $HOME/lxc && sudo tar cf $HOME/lxc/cache.tar /var/cache/lxc/ && sudo chown $USER. $HOME/lxc/cache.tar
 install:
+- sudo tar xf $HOME/lxc/cache.tar -C / || true
+- sudo apt-get install -y expect-dev
 - pip install ansible
 - ansible --version
-- printf "$VAULT_PASS" > .vault_password
-- printf '[defaults]\nroles_path=../\nhost_key_checking=False\nvault_password_file=.vault_password' >ansible.cfg
-- sudo tar xf $HOME/lxc/cache.tar -C / || echo "Didn't extract cache."
-- export LXC_ROOTFS=/var/lib/lxc/$LXC_NAME/rootfs
-- '[ "x${LXC_DISTRO}" == "xdebian" ] && sudo LANG= LC_ALL= LC_CTYPE= lxc-create -n
-  $LXC_NAME -t debian -- -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/debian
-  --packages python || true'
-- '[ "x${LXC_DISTRO}" == "xcentos" ] && sudo root_expire_password=no lxc-create -n
-  $LXC_NAME -t centos -- -R $LXC_RELEASE || true'
-- '[ "x${LXC_DISTRO}" == "xubuntu" ] && sudo lxc-create -n $LXC_NAME -t ubuntu --
-  -r $LXC_RELEASE --mirror http://mirrors.us.kernel.org/ubuntu --packages python,ca-certificates,curl ||
-  true'
-- sudo lxc-start -n $LXC_NAME && until (sudo lxc-info -n $LXC_NAME | grep -q ^IP:);
-  do printf . && sleep 1; done && sleep 2
-- '[ "x${LXC_DISTRO}" == "xcentos" ] && sudo lxc-attach -n $LXC_NAME -- yum install -y epel-release || true'
-- sudo /bin/bash -c "printf '\n$(sudo lxc-info -Hin $LXC_NAME) test.lxc' >> /etc/hosts"
-- ssh-keygen -f ~/.ssh/id_rsa -t rsa -N ''
-- sudo mkdir -vm 0700 $LXC_ROOTFS/root/.ssh/
-- sudo cp -v ~/.ssh/id_rsa.pub $LXC_ROOTFS/root/.ssh/authorized_keys
+- printf '[defaults]\nroles_path=../\ncallback_whitelist=profile_tasks'  >ansible.cfg
+- ansible-galaxy install lae.travis-lxc
+- ansible-playbook -vvv tests/install.yml
 script:
 - ansible-playbook tests/test.yml -i tests/inventory --syntax-check
 - ansible-playbook tests/test.yml -i tests/inventory
-- unbuffer ansible-playbook tests/test.yml -i tests/inventory >/tmp/idempotency.log
+- unbuffer ansible-playbook -vvv tests/test.yml -i tests/inventory >/tmp/idempotency.log
   2>&1
-- 'tail /tmp/idempotency.log | grep -qP ''changed=0.*failed=0'' && (echo "Idempotence:
+- 'grep -A1 "PLAY RECAP" /tmp/idempotency.log | grep -qP "changed=0.*failed=0" && (echo "Idempotence:
   PASS"; exit 0) || (echo "Idempotence: FAIL"; cat /tmp/idempotency.log; exit 1)'
 
 notifications:
