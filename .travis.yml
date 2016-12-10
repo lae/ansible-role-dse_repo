@@ -18,7 +18,8 @@ install:
 - sudo apt-get install -y expect-dev
 - pip install ansible
 - ansible --version
-- printf '[defaults]\nroles_path=../\ncallback_whitelist=profile_tasks'  >ansible.cfg
+- printf "$VAULT_PASS" > .vault_password
+- printf '[defaults]\nroles_path=../\nvault_password_file=.vault_password\ncallback_whitelist=profile_tasks'  >ansible.cfg
 - ansible-galaxy install lae.travis-lxc
 - ansible-playbook -vvv tests/install.yml
 script:
